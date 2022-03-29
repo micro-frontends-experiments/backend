@@ -3,14 +3,23 @@ const app = express()
 const PORT = 8001
 
 app.get('/micro-app-1', (req, res) => {
+    res.setHeader('Access-Control-Allow-Origin', 'http://localhost:8000')
     res.send({
         title: 'App 1'
     })
 })
 
 app.get('/micro-app-2', (req, res) => {
+    res.setHeader('Access-Control-Allow-Origin', 'http://localhost:8000')
     res.send({
         title: 'App 2'
+    })
+})
+
+app.get('/root-app', (req, res) => {
+    res.setHeader('Access-Control-Allow-Origin', 'http://localhost:8000')
+    res.send({
+        title: 'Root App'
     })
 })
 
