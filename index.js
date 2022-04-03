@@ -17,13 +17,14 @@ app.get('/micro-app-2', (req, res) => {
 })
 
 app.get('/root-app', (req, res) => {
-    res.setHeader('Access-Control-Allow-Origin', 'http://localhost:8000')
+    res.setHeader('Access-Control-Allow-Origin', '*')
     res.send({
         title: 'Root App'
     })
 })
 
 app.get('/', (req, res) => {
+    res.setHeader('Access-Control-Allow-Origin', '*')
     res.send('Hello, world!')
 })
 
