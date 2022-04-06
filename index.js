@@ -1,6 +1,11 @@
 const express = require('express')
 const app = express()
+const basicAuth = require('express-basic-auth')
 const PORT = 8001
+
+// app.use(basicAuth({
+//     users: { 'admin': 'supersecret' }
+// }))
 
 app.get('/micro-app-1', (req, res) => {
     res.setHeader('Access-Control-Allow-Origin', '*')
