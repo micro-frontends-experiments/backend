@@ -15,9 +15,13 @@ app.use(express.json());
 
 app.get('/user', (req, res) => {
     res.send({
-        name: 'Admin',
-        age: 35,
+        name: req.user.name,
+        age: req.user.age,
     })
+})
+
+app.get('/notes', (req, res) => {
+    res.send(req.user.notes)
 })
 
 app.post('/login', (req, res) => {
@@ -33,14 +37,6 @@ app.post('/login', (req, res) => {
             error: 'Incorrect login or password'
         })
     }
-})
-
-app.post('/user', (req, res) => {
-    console.log(req.body)
-    res.send({
-        name: 'Admin',
-        age: 35,
-    })
 })
 
 app.get('/micro-app-1', (req, res) => {
