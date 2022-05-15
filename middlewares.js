@@ -1,5 +1,5 @@
 const {users} = require('./db');
-const PAGES_WITHOUT_PROTECT = ['/login']
+const PAGES_WITHOUT_PROTECT = ['/login', '/notes/:userId', '/note']
 
 const authMiddleware = (req, res, next) => {
   if (

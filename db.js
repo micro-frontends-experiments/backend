@@ -1,5 +1,6 @@
 const users = [
   {
+    id: 1,
     login: 'admin@mail.com',
     password: 'supersecret',
     age: 35,
@@ -18,6 +19,7 @@ const users = [
     ]
   },
   {
+    id: 2,
     login: 'user@mail.com',
     password: 'secret',
     age: 20,
@@ -25,7 +27,8 @@ const users = [
     notes: [
       {
         title: 'Note 1',
-        text: 'Hey, i am user note 1'
+        text: 'Hey, i am user note 1',
+        id: 1,
       },
     ]
   },
