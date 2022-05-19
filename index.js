@@ -38,8 +38,8 @@ app.route('/user')
 
 app.post('/create-account', (req, res) => {
   console.log(req.body)
-  const {name, ...rest} = req.body;
-  const token = name + '-token';
+  const {name, login, ...rest} = req.body;
+  const token = login + '-token';
   const id = Date.now();
   const user = {
     name, token, id, notes: [], ...rest
