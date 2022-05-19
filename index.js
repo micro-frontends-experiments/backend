@@ -144,6 +144,11 @@ app.post('/login', (req, res) => {
     console.log(req.body)
     const {login, password} = req.body;
     const user = users.find(user => user.login === login);
+    if (!user) {
+      res.send({
+        error: 'User not found'
+      })
+    }
     if (user && user.password === password) {
         res.send({
             token: user.token,
