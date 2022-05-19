@@ -38,11 +38,11 @@ app.route('/user')
 
 app.post('/create-account', (req, res) => {
   console.log(req.body)
-  const {name, login, ...rest} = req.body;
+  const {login, ...rest} = req.body;
   const token = login + '-token';
-  const id = String(Date.now()) + login;
+  const id = Math.ceil(Math.random() * Date.now());
   const user = {
-    name, token, id, notes: [], ...rest
+    token, id, login, notes: [], ...rest
   }
   users.push(user);
   res.send({
@@ -141,21 +141,23 @@ app.route('/note')
   })
 
 app.post('/login', (req, res) => {
+    console.log('/login')
     console.log(req.body)
     const {login, password} = req.body;
     const user = users.find(user => user.login === login);
+    console.log('users: ', users);
     if (!user) {
-      res.send({
+      return res.send({
         error: 'User not found'
       })
     }
     if (user && user.password === password) {
-        res.send({
+        return res.send({
             token: user.token,
             userId: user.id,
         })
     } else {
-        res.send({
+        return res.send({
             error: 'Incorrect login or password'
         })
     }
