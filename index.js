@@ -1,6 +1,5 @@
 const express = require('express')
 const app = express()
-const authMiddleware = require("./middlewares");
 const {users} = require("./db");
 const PORT = 8001
 
@@ -10,14 +9,46 @@ app.use((req, res, next) => {
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
     next()
 })
-// app.use(authMiddleware);
 app.use(express.json());
 
-app.get('/user', (req, res) => {
-    res.send({
-        name: req.user.name,
-        age: req.user.age,
-    })
+const USER_APP_ACCESS_TOKEN = 'user-app-secret-key';
+
+app.route('/user')
+  .get((req, res) => {
+    const token = req.header('Authorization')?.replace('My-Token ', '')
+    if (token !== USER_APP_ACCESS_TOKEN) {
+        return res.send({
+            error: "Don't have access to this resource"
+        })
+    }
+    const userId = Number(req.query.id);
+    const foundedUser = users.find(user => user.id === userId);
+    if (foundedUser) {
+        res.send({
+            name: foundedUser.name,
+            id: foundedUser.id,
+            login: foundedUser.login,
+        })
+    } else {
+        res.send({
+            error: 'User not found'
+        })
+    }
+  })
+
+app.post('/create-account', (req, res) => {
+  console.log(req.body)
+  const {name, ...rest} = req.body;
+  const token = name + '-token';
+  const id = Date.now();
+  const user = {
+    name, token, id, notes: [], ...rest
+  }
+  users.push(user);
+  res.send({
+    token: user.token,
+    userId: user.id,
+  })
 })
 
 app.get('/check-auth', (req, res) => {
@@ -58,7 +89,7 @@ app.route('/note')
                 error: 'User does not exist'
             })
         let result;
-        updatedUser.notes = updatedUser?.notes.map(note => {
+        updatedUser.notes = updatedUser.notes.map(note => {
             if (note.id === id) {
                 result = {...note, text, title}
                 return result
@@ -84,6 +115,29 @@ app.route('/note')
       res.send({
         success: true,
       })
+  })
+  .post((req, res) => {
+      const userId = Number(req.query.userId);
+      const updatedUser = users.find(user => user.id === userId);
+      if (!updatedUser)
+        res.send({
+          error: 'User does not exist'
+        })
+      const newNoteId = Date.now();
+      updatedUser.notes.unshift({id: newNoteId, text: '', title: ''})
+      console.log(updatedUser)
+      res.send({
+        success: true,
+        id: newNoteId,
+      })
+  })
+  .all((req, res) => {
+    const token = req.header('Authorization')?.replace('My-Token ', '')
+    if (token !== NOTE_APP_ACCESS_TOKEN) {
+      return res.send({
+        error: "Don't have access to this resource"
+      })
+    }
   })
 
 app.post('/login', (req, res) => {

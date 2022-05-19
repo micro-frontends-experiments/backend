@@ -2,6 +2,7 @@ const users = [
   {
     id: 1,
     login: 'admin@mail.com',
+    name: 'Dimon',
     password: 'supersecret',
     age: 35,
     token: 'admin-token',
@@ -20,6 +21,7 @@ const users = [
   },
   {
     id: 2,
+    name: 'Alex',
     login: 'user@mail.com',
     password: 'secret',
     age: 20,
