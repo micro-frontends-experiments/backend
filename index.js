@@ -1,6 +1,10 @@
 const express = require('express')
 const app = express()
 const {users} = require("./db");
+const {ref, set, push, get, child, remove, update} = require("firebase/database");
+
+const db = require("./firebase");
+const dbRef = ref(db);
 const PORT = 8001
 
 app.use((req, res, next) => {
@@ -11,127 +15,203 @@ app.use((req, res, next) => {
 })
 app.use(express.json());
 
+app.post('/create-account', (req, res) => {
+  console.log(req.body)
+  const usersRef = ref(db, 'users/');
+  const {login, ...rest} = req.body;
+  const tokenKey = push(usersRef).key;
+  const token = tokenKey + '-token';
+  const user = {
+    token, login, notes: {}, ...rest
+  }
+  const userId = push(usersRef, user).key;
+  set(ref(db, `users/${userId}`), {...user, id: userId})
+    .then(() =>  res.send({
+      token: user.token,
+      userId,
+    }))
+    .catch(() => res.send({
+      error: 'Something went wrong'
+    }));
+})
+
+app.post('/login', (req, res) => {
+  console.log('/login')
+  console.log(req.body)
+  const {login, password} = req.body;
+  get(child(dbRef, `users/`)).then((snapshot) => {
+    if (snapshot.exists()) {
+      console.log(snapshot.val());
+      const users = snapshot.val();
+      for (const userId in users) {
+        if (users[userId].login === login) {
+          if (users[userId].password === password) {
+            return res.send({
+              userId,
+              token: users[userId].token,
+              isAuth: true
+            })
+          } else {
+            res.send({error: 'Password is incorrect'})
+          }
+        }
+      }
+    }
+    return res.send({error: 'User does not exist'})
+  }).catch((error) => {
+    res.send({
+      isAuth: false,
+      error,
+    })
+  });
+})
+
+app.get('/check-auth', async (req, res) => {
+    const token = req.header('Authorization')?.replace('My-Token ', '')
+    get(child(dbRef, `users/`)).then((snapshot) => {
+      if (snapshot.exists()) {
+        console.log(snapshot.val());
+        const users = snapshot.val();
+        for (const userId in users) {
+          if (users[userId].token === token) {
+            return res.send({
+              userId,
+              isAuth: true
+            })
+          }
+        }
+      }
+      return res.send({
+        error: 'User not found'
+      })
+    }).catch((error) => {
+      return res.send({
+        isAuth: false,
+        error,
+      })
+    });
+})
+
 const USER_APP_ACCESS_TOKEN = 'user-app-secret-key';
 
 app.route('/user')
   .get((req, res) => {
+    console.log('/user')
     const token = req.header('Authorization')?.replace('My-Token ', '')
     if (token !== USER_APP_ACCESS_TOKEN) {
+      return res.send({
+        error: "Don't have access to this resource"
+      })
+    }
+    const userId = String(req.query.id);
+    get(child(dbRef, `users/${userId}`)).then((snapshot) => {
+      if (snapshot.exists()) {
+        console.log(snapshot.val());
+        const user = snapshot.val();
         return res.send({
-            error: "Don't have access to this resource"
+          name: user.name,
+          id: user.id,
+          login: user.login,
         })
-    }
-    const userId = Number(req.query.id);
-    const foundedUser = users.find(user => user.id === userId);
-    if (foundedUser) {
-        res.send({
-            name: foundedUser.name,
-            id: foundedUser.id,
-            login: foundedUser.login,
-        })
-    } else {
-        res.send({
-            error: 'User not found'
-        })
-    }
+      }
+      return res.send({
+        error: 'User not found'
+      })
+    }).catch((error) => {
+      return res.send({
+        error,
+      })
+    });
   })
-
-app.post('/create-account', (req, res) => {
-  console.log(req.body)
-  const {login, ...rest} = req.body;
-  const token = login + '-token';
-  const id = Math.ceil(Math.random() * Date.now());
-  const user = {
-    token, id, login, notes: [], ...rest
-  }
-  users.push(user);
-  res.send({
-    token: user.token,
-    userId: user.id,
-  })
-})
-
-app.get('/check-auth', (req, res) => {
-    const token = req.header('Authorization')?.replace('My-Token ', '')
-    const currentUser = users.find(user => user.token === token)
-    if (currentUser) {
-        res.send({
-            userId: currentUser.id,
-            isAuth: true
-        })
-    } else {
-        res.send({isAuth: false})
-    }
-})
 
 const NOTE_APP_ACCESS_TOKEN = 'note-app-secret-key'
 
 app.get('/notes', (req, res) => {
+    console.log('/notes');
     const token = req.header('Authorization')?.replace('My-Token ', '')
     if (token !== NOTE_APP_ACCESS_TOKEN) {
         return res.send({
             error: "Don't have access to this resource"
         })
     }
-    const userId = Number(req.query.userId);
-    const user = users.find(user => user.id === userId);
-    res.send(user?.notes)
+    const userId = String(req.query.userId);
+    get(child(dbRef, `users/${userId}`)).then((snapshot) => {
+      if (snapshot.exists()) {
+        console.log(snapshot.val());
+        const user = snapshot.val();
+        return res.send({
+          notes: user.notes ? Object.keys(user.notes).map(id => user.notes[id]) : [],
+        })
+      }
+      return res.send({
+        error: 'User not found'
+      })
+    }).catch((error) => {
+      return res.send({
+        error,
+      })
+    });
 })
 
 app.route('/note')
-    .put((req, res) => {
-        const {id, text, title} = req.body;
-        console.log(id, text, title)
-        const userId = Number(req.query.userId);
-        const updatedUser = users.find(user => user.id === userId);
-        if (!updatedUser)
-            res.send({
-                error: 'User does not exist'
-            })
-        let result;
-        updatedUser.notes = updatedUser.notes.map(note => {
-            if (note.id === id) {
-                result = {...note, text, title}
-                return result
-            }
-            else {
-                return note
-            }
-        })
-        console.log(updatedUser)
-        res.send(result)
-    })
-  .delete((req, res) => {
-      const userId = Number(req.query.userId);
-      const noteId = Number(req.query.noteId);
-      const updatedUser = users.find(user => user.id === userId);
-      if (!updatedUser) {
-          res.send({
-              error: 'User does not exist'
+    .put(async (req, res) => {
+        const {id: noteId, text = "", title = ""} = req.body;
+        console.log(noteId, text, title)
+        const userId = String(req.query.userId);
+        const snapshot = await get(ref(db, `users/${userId}/notes/${noteId}`))
+        if (!snapshot.exists()) {
+          return res.send({
+            error: 'Note does not exist'
           })
-      }
-      updatedUser.notes = updatedUser?.notes.filter(note => note.id !== noteId)
-      console.log(updatedUser);
-      res.send({
-        success: true,
-      })
+        }
+        update(ref(db, `users/${userId}/notes/${noteId}`), {text, title})
+          .then(() => res.send({
+              text, title, id: noteId
+            })
+          )
+          .catch(() => res.send({
+            error: 'Something went wrong'
+          }));
+    })
+    .delete(async (req, res) => {
+      console.log('/delete');
+      const userId = String(req.query.userId);
+      const noteId = String(req.query.noteId);
+      console.log('noteId: ', noteId);
+      remove(ref(db, `users/${userId}/notes/${noteId}`))
+        .then(() => res.send({
+          success: true,
+        })
+        )
+        .catch(() => res.send({
+            error: 'Something went wrong'
+        }));
+
   })
-  .post((req, res) => {
-      const userId = Number(req.query.userId);
-      const updatedUser = users.find(user => user.id === userId);
-      if (!updatedUser)
+    .post((req, res) => {
+      const userId = String(req.query.userId);
+      const notesRef = ref(db, `users/${userId}/notes`);
+      const newNote = {
+        text: '',
+        title: '',
+      }
+      if (!notesRef) {
         res.send({
           error: 'User does not exist'
         })
-      const newNoteId = Date.now();
-      updatedUser.notes.unshift({id: newNoteId, text: '', title: ''})
-      console.log(updatedUser)
-      res.send({
-        success: true,
-        id: newNoteId,
-      })
+      }
+      const newNoteId = push(notesRef, newNote).key;
+      set(ref(db, `users/${userId}/notes/${newNoteId}`), {...newNote, id: newNoteId})
+        .then(() => res.send({
+          success: true,
+          id: newNoteId,
+        }))
+        .catch(() => res.send({
+          error: 'Something went wrong'
+        }))
+
   })
-  .all((req, res) => {
+    .all((req, res) => {
     const token = req.header('Authorization')?.replace('My-Token ', '')
     if (token !== NOTE_APP_ACCESS_TOKEN) {
       return res.send({
@@ -140,28 +220,7 @@ app.route('/note')
     }
   })
 
-app.post('/login', (req, res) => {
-    console.log('/login')
-    console.log(req.body)
-    const {login, password} = req.body;
-    const user = users.find(user => user.login === login);
-    console.log('users: ', users);
-    if (!user) {
-      return res.send({
-        error: 'User not found'
-      })
-    }
-    if (user && user.password === password) {
-        return res.send({
-            token: user.token,
-            userId: user.id,
-        })
-    } else {
-        return res.send({
-            error: 'Incorrect login or password'
-        })
-    }
-})
+
 
 app.get('/micro-app-1', (req, res) => {
     res.send({
