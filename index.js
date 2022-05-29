@@ -1,6 +1,5 @@
 const express = require('express')
 const app = express()
-const {users} = require("./db");
 const {ref, set, push, get, child, remove, update} = require("firebase/database");
 
 const db = require("./firebase");
